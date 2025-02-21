@@ -33,6 +33,8 @@ As such, the current limitations are:
 
 - The proxy is on port 1234
 - The proxy reroutes to port 3000 (so it forces your _main server_ to listen to 3000)
+- Your _main server_ needs to answer with a valid html document and a `</head>` at some point.
+  Olive uses that to inject a piece of javascript for the websocket to connect.
 - Olive must run in the root dir where `gleam.toml` is so it can get the name of the project to run it.
 - Olive speaks (logs) and there is no way to make it quiet for now
 - Olive only watches for changes under `src/` and nothing else
@@ -56,6 +58,8 @@ Then, use gleam to run it:
 ```sh
 gleam run -m olive
 ```
+
+Olive takes care of running your _main server_ for you!
 
 # Example
 
@@ -81,7 +85,18 @@ In `src/my_project/router.gleam`:
 ```gleam
 pub fn handle_request(_req: Request) -> Response {
   response.new(200)
-  |> response.set_body(mist.Bytes(bytes_tree.from_string("Hello world")))
+  |> response.set_body(mist.Bytes(bytes_tree.from_string(html("Hello world"))))
+}
+
+fn html(content: String) {
+  "<html>
+    <head>
+      <title>My project</title>
+    </head>
+    <body>"
+    <> content
+    <> "</body>
+    </html>"
 }
 ```
 
