@@ -23,9 +23,9 @@ The different pieces are:
 Anything else sent to the proxy is directly rerouted to your _main server_.
 
 ## Who is this for?
-- :x: If you are using lustre, checkout lustre dev tools instead!
-- :x: If you are developping an API server, you might be better off with a simple `watchexec`
-- :white_check_mark: If you are working on a server that renders HTML (vanilla, htmx or others), this might interest you!
+- ❌ If you are using lustre, checkout lustre dev tools instead!
+- ❌ If you are developping an API server, you might be better off with a simple `watchexec`
+- ✅ If you are working on a server that renders HTML (vanilla, htmx or others), this might interest you!
 
 # Caveats / Current limitations
 For now, the tool is very much a Proof of Concept.
@@ -92,6 +92,6 @@ Now, after installing `olive`, you can run `gleam run -m olive`, and the followi
 Open localhost:1234, and you should be granted with a `Hello world`.
 
 Now update the file in `router.gleam` so the server sends back `Hello olive`, and voila!
-Your browser should refresh automatically after a quick rebuild and show you the new message :)
+Your browser should refresh automatically after a quick rebuild and show you the new message 🎉
 
 Any updates to `src/my_project.gleam` will not work, as explained in the Caveats chapter.
