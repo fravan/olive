@@ -16,19 +16,21 @@ import gleam/result
 import gleam/string
 import mist
 import olive/client_registry.{type ClientRegistry}
+import olive/config
 import olive/logging
 
-pub fn start_http(clients: ClientRegistry) {
+pub fn start_http(config: config.Config, clients: ClientRegistry) {
   fn(req: request.Request(mist.Connection)) -> response.Response(
     mist.ResponseData,
   ) {
     case request.path_segments(req) {
       ["ws_livereload"] -> handle_websocket(req, clients)
-      _ -> handle_request(req)
+      _ -> handle_request(config, req)
     }
   }
   |> mist.new
-  |> mist.port(1234)
+  |> mist.bind(config.bind)
+  |> mist.port(config.proxy_port)
   |> mist.start_http
 }
 
@@ -76,13 +78,13 @@ fn handle_websocket(
   )
 }
 
-fn handle_request(req: request.Request(mist.Connection)) {
+fn handle_request(config: config.Config, req: request.Request(mist.Connection)) {
   let internal_error =
     response.new(500)
     |> response.set_body(mist.Bytes(bytes_tree.new()))
 
   let assert Ok(req) = mist.read_body(req, 100 * 1024 * 1024)
-  request.Request(..req, port: option.Some(3000))
+  request.Request(..req, port: option.Some(config.main_port))
   |> httpc.send_bits
   |> result.map(response.map(_, maybe_inject_sse))
   |> result.map(response.map(_, bytes_tree.from_bit_array))

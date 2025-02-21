@@ -1,5 +1,7 @@
 import gleam/erlang/process.{type Subject}
+import gleam/option
 import olive/client_registry.{type ClientRegistry}
+import olive/config
 import olive/logging
 import olive/proxy
 import olive/server_run
@@ -12,12 +14,22 @@ import olive/watcher
 ///   - Reload server code
 ///   - Send reload message to clients
 pub fn main() {
+  let config = config.parse_from_cli()
+  case config {
+    option.Some(config) -> run_olive(config)
+    option.None -> {
+      Nil
+    }
+  }
+}
+
+fn run_olive(config: config.Config) {
   let clients = client_registry.start()
   let subject = process.new_subject()
   let assert Ok(_) = watcher.start(subject)
   let _ = server_run.start_server()
 
-  let assert Ok(_) = proxy.start_http(clients)
+  let assert Ok(_) = proxy.start_http(config, clients)
 
   listen_to_file_changes(subject, clients)
 }
