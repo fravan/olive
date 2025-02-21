@@ -3,8 +3,6 @@
 //// module, to add / remove them, and send them a websocket message to trigger the
 //// actual reload of the browser.
 
-import dev_server/client_registry.{type ClientRegistry}
-import dev_server/logging
 import gleam/bit_array
 import gleam/bytes_tree
 import gleam/erlang/process
@@ -17,6 +15,8 @@ import gleam/otp/actor
 import gleam/result
 import gleam/string
 import mist
+import olive/client_registry.{type ClientRegistry}
+import olive/logging
 
 pub fn start_http(clients: ClientRegistry) {
   fn(req: request.Request(mist.Connection)) -> response.Response(

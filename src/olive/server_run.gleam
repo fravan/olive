@@ -1,14 +1,12 @@
 //// the `server_run` module runs the "main" server and also handles the rebuilding
-//// of the main server code every time it is needed. Once a new build is generated
-//// it _hot_ replaces the updated modules.
+//// of the main server code every time it is needed.
 
-import dev_server/config
-import dev_server/logging
 import gleam/erlang/atom
 import gleam/erlang/process
 import gleam/int
-import gleam/list
 import gleam/result
+import olive/config
+import olive/logging
 import shellout
 
 // From gleam-radiate
@@ -16,20 +14,14 @@ type Module
 
 type What
 
-@external(erlang, "code", "modified_modules")
-fn modified_modules() -> List(Module)
+@external(erlang, "olive_ffi", "reload_modules")
+fn reload_modules() -> Result(Nil, List(#(Module, What)))
 
-@external(erlang, "dev_ffi", "spawn_main_server")
+@external(erlang, "olive_ffi", "spawn_main_server")
 fn spawn_main_server(
   fully_qualified_module: atom.Atom,
   module: atom.Atom,
 ) -> process.Pid
-
-@external(erlang, "code", "purge")
-fn purge(module: Module) -> Bool
-
-@external(erlang, "dev_ffi", "atomic_load")
-fn atomic_load(modules: List(Module)) -> Result(Nil, List(#(Module, What)))
 
 pub fn start_server() {
   let name = config.get_name()
@@ -49,9 +41,7 @@ pub fn reload_server_code() {
   })
   |> result.try(fn(output) {
     logging.log_debug("Output of `gleam build`: " <> output)
-    let mods = modified_modules()
-    list.each(mods, purge)
-    atomic_load(mods)
+    reload_modules()
     |> result.map_error(fn(_) { "Error while reloading Erlang modules" })
   })
 }

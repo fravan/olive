@@ -1,13 +1,13 @@
 //// The `watcher` module watches a list of dir and triggers a `FilesChanged` message
 //// to be handled by calling code.
 
-import dev_server/logging
 import gleam/dynamic/decode
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Subject, type Timer}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type ErlangStartResult}
+import olive/logging
 
 @external(erlang, "fs", "start_link")
 fn fs_start_link(name: Atom, path: String) -> ErlangStartResult

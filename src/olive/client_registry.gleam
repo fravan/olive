@@ -1,10 +1,10 @@
 //// The `client_registry` module holds a list of connected clients (browsers)
 //// and allows to trigger those clients by sending them a `Reload` message.
 
-import dev_server/logging
 import gleam/erlang/process.{type Subject}
 import gleam/otp/actor
 import gleam/set.{type Set}
+import olive/logging
 
 pub type ClientMessage {
   Reload

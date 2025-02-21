@@ -1,13 +1,9 @@
-name = "dev_server"
+name = "olive"
 version = "1.0.0"
-
-# Fill out these fields if you intend to generate HTML documentation or publish
-# your project to the Hex package manager.
-#
-# description = ""
-# licences = ["Apache-2.0"]
-# repository = { type = "github", user = "", repo = "" }
-# links = [{ title = "Website", href = "" }]
+description = "A gleam dev proxy to enable live reload and smoother DX"
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "fravan", repo = "olive" }
+# links = []
 #
 # For a full reference of all the available options, you can have a look at
 # https://gleam.run/writing-gleam/gleam-toml/.

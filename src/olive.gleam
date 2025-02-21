@@ -1,9 +1,9 @@
-import dev_server/client_registry.{type ClientRegistry}
-import dev_server/logging
-import dev_server/proxy
-import dev_server/server_run
-import dev_server/watcher
 import gleam/erlang/process.{type Subject}
+import olive/client_registry.{type ClientRegistry}
+import olive/logging
+import olive/proxy
+import olive/server_run
+import olive/watcher
 
 /// Process is as follow:
 /// - Start a client registry
