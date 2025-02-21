@@ -1,4 +1,4 @@
-# olive
+# olive 🫒
 
 [![Package Version](https://img.shields.io/hexpm/v/olive)](https://hex.pm/packages/olive)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/olive/)
@@ -23,11 +23,22 @@ The different pieces are:
 Anything else sent to the proxy is directly rerouted to your _main server_.
 
 ## Who is this for?
-- :ko: If you are using lustre, checkout lustre dev tools instead!
-- :ko: If you are developping an API server, you might be better off with a simple `watchexec`
-- :ok: If you are working on a server that renders HTML (vanilla, htmx or others), this might interest you!
+- :x: If you are using lustre, checkout lustre dev tools instead!
+- :x: If you are developping an API server, you might be better off with a simple `watchexec`
+- :white_check_mark: If you are working on a server that renders HTML (vanilla, htmx or others), this might interest you!
 
 # Caveats / Current limitations
+For now, the tool is very much a Proof of Concept.
+As such, the current limitations are:
+
+- The proxy is on port 1234
+- The proxy reroutes to port 3000 (so it forces your _main server_ to listen to 3000)
+- Olive must run in the root dir where `gleam.toml` is so it can get the name of the project to run it.
+- Olive speaks (logs) and there is no way to make it quiet for now
+- Olive only watches for changes under `src/` and nothing else
+- All of the above is not configurable but might be in the future!
+
+
 Because of the nature of the `code:atomic_load`, any changes to your `main` function will not be taken into account.
 Basically, the gleam file ran by the default `gleam run`, which should be a wisp server,
 will never be replaced because it is always running. The BEAM never has a chance to swap for the new module.
