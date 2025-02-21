@@ -1,6 +1,6 @@
 -module(dev_ffi).
 
--export([atomic_load/1]).
+-export([atomic_load/1, spawn_main_server/2]).
 
 atomic_load(Modules) ->
     case code:atomic_load(Modules) of
@@ -9,3 +9,6 @@ atomic_load(Modules) ->
         otherwise ->
             otherwise
     end.
+
+spawn_main_server(FullyQualifiedModule, Module) ->
+    spawn_link(FullyQualifiedModule, run, [Module]).
