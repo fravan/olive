@@ -73,7 +73,7 @@ fn watch_folder(dir: String) {
       Ok(selectors)
     }
     Error(_) -> {
-      logging.log_error("Error occured while watching folder: " <> dir)
+      logging.error("Error occured while watching folder: " <> dir)
       Error(Nil)
     }
   }
@@ -91,7 +91,7 @@ fn watch_decoder(msg: decode.Dynamic) {
         False -> IgnoreChanges
       }
     Error(_) -> {
-      logging.log_error("Error occured while watching files")
+      logging.error("Error occured while watching files")
       IgnoreChanges
     }
   }

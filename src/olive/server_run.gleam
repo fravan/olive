@@ -34,13 +34,13 @@ pub fn reload_server_code() {
   shellout.command(run: "gleam", with: ["build"], in: ".", opt: [])
   |> result.map_error(fn(err) {
     let #(status, msg) = err
-    "Error while building gleam project: "
+    "Error while building gleam project:\n"
     <> int.to_string(status)
     <> " - "
     <> msg
   })
   |> result.try(fn(output) {
-    logging.log_debug("Output of `gleam build`: " <> output)
+    logging.debug("Output of `gleam build`:\n" <> output)
     reload_modules()
     |> result.map_error(fn(_) { "Error while reloading Erlang modules" })
   })

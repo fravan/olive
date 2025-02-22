@@ -16,7 +16,12 @@ pub fn get_name() {
 }
 
 pub type Config {
-  Config(main_port: Int, proxy_port: Int, bind: String)
+  Config(
+    main_port: Int,
+    proxy_port: Int,
+    bind: String,
+    log: logging.LogLevelFilter,
+  )
 }
 
 pub fn parse_from_cli() -> option.Option(Config) {
@@ -25,12 +30,14 @@ pub fn parse_from_cli() -> option.Option(Config) {
       use main_port <- clip.parameter
       use proxy_port <- clip.parameter
       use bind <- clip.parameter
+      use log <- clip.parameter
 
-      Config(main_port:, proxy_port:, bind:)
+      Config(main_port:, proxy_port:, bind:, log:)
     })
     |> clip.opt(main_port_opt())
     |> clip.opt(proxy_port_opt())
     |> clip.opt(bind_opt())
+    |> clip.opt(log_opt())
     |> clip.help(help.simple(
       "olive",
       "Runs a dev proxy for easy live reloading and automatic code changes",
@@ -39,7 +46,7 @@ pub fn parse_from_cli() -> option.Option(Config) {
   {
     Ok(config) -> option.Some(config)
     Error(e) -> {
-      logging.log_debug(e)
+      logging.debug(e)
       option.None
     }
   }
@@ -62,5 +69,18 @@ fn proxy_port_opt() {
 fn bind_opt() {
   opt.new("bind")
   |> opt.default("localhost")
-  |> opt.help("The proxy binding address")
+  |> opt.help("The proxy binding address.")
+}
+
+fn log_opt() {
+  opt.new("log")
+  |> opt.map(fn(v) {
+    case v {
+      "error" | "Error" -> logging.ErrorsOnly
+      "none" | "None" -> logging.NoLogs
+      _ -> logging.AllLogs
+    }
+  })
+  |> opt.default(logging.AllLogs)
+  |> opt.help("Either All, Error or None to filter logs from olive.")
 }

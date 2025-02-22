@@ -24,6 +24,8 @@ pub fn main() {
 }
 
 fn run_olive(config: config.Config) {
+  logging.configure_logs(config.log)
+
   let clients = client_registry.start()
   let subject = process.new_subject()
   let assert Ok(_) = watcher.start(subject)
@@ -46,7 +48,7 @@ fn listen_to_file_changes(
           client_registry.trigger(clients)
         }
         Error(msg) -> {
-          logging.log_error("Error while reloading server code : " <> msg)
+          logging.error(msg)
         }
       }
     }
