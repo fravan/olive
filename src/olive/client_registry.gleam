@@ -27,18 +27,18 @@ pub fn start() {
       fn(message: Message, state: Set(Subject(ClientMessage))) {
         case message {
           ClientConnected(client) -> {
-            logging.debug("Client connected")
+            logging.notice("Client connected")
             actor.continue(set.insert(state, client))
           }
           ClientDisconnected(client) -> {
-            logging.debug("Client disconnected")
+            logging.notice("Client disconnected")
             actor.continue(set.delete(state, client))
           }
           TriggerClients -> {
             case set.is_empty(state) {
               True -> actor.continue(state)
               False -> {
-                logging.debug("Triggering clients to reload")
+                logging.notice("Triggering clients to reload")
                 set.each(state, fn(client) { process.send(client, Reload) })
                 actor.continue(state)
               }

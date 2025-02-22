@@ -22,12 +22,11 @@ configure_logs(Level) ->
     logger:add_handler(olive_log,
                        logger_std_h,
                        #{formatter => {olive_ffi, #{}},
-                         level => all,
                          filters =>
                              [{olive_filter_domain,
                                {fun logger_filters:domain/2, {stop, not_equal, [olive]}}},
                               {olive_filter_level,
-                               {fun logger_filters:level/2, {log, gteq, Level}}}],
+                               {fun logger_filters:level/2, {stop, lt, Level}}}],
                          config => #{type => standard_io}}).
 
 log(Level, Message) ->

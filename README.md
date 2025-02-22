@@ -29,14 +29,14 @@ Anything else sent to the proxy is directly rerouted to your _main server_.
 
 # Caveats / Current limitations
 For now, the tool is very much a Proof of Concept.
-As such, the current limitations are:
 
-- The proxy is on port 1234
-- The proxy reroutes to port 3000 (so it forces your _main server_ to listen to 3000)
+> Make sure to checkout the help for any configuration options with `gleam run -m olive -- --help`
+
+Current limitations are:
+
 - Your _main server_ needs to answer with a valid html document and a `</head>` at some point.
   Olive uses that to inject a piece of javascript for the websocket to connect.
 - Olive must run in the root dir where `gleam.toml` is so it can get the name of the project to run it.
-- Olive speaks (logs) and there is no way to make it quiet for now
 - Olive only watches for changes under `src/` and nothing else
 - All of the above is not configurable but might be in the future!
 
@@ -110,3 +110,20 @@ Now update the file in `router.gleam` so the server sends back `Hello olive`, an
 Your browser should refresh automatically after a quick rebuild and show you the new message 🎉
 
 Any updates to `src/my_project.gleam` will not work, as explained in the Caveats chapter.
+
+
+# Logging
+
+Olive uses erlang `logger` module, and allows you to specify what goes out on your terminal.
+3 levels of filters are specified:
+- **All**: Will show all olive logs (the default).
+- **Error**: Will only show olive errors.
+- **None**: Will shutdown olive logs entirely.
+
+Olive logs 2 kind of log level: *Notice* and *Error*.
+It also adds the metadata `{domain => [olive]}` to any logs so you can add your own handler on it if needed.
+
+> ⚠️ I don't recommand turning off *Error* log level. ⚠️
+>
+> When rebuilding your project, any error from `gleam build` will be an Olive error log, and you won't
+> see it if it is turned off!

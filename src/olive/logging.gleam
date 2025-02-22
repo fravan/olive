@@ -1,7 +1,7 @@
 pub type LogLevel {
   Emergency
   Error
-  Debug
+  Notice
 }
 
 pub type LogLevelFilter {
@@ -13,7 +13,7 @@ pub type LogLevelFilter {
 pub fn configure_logs(level: LogLevelFilter) -> Nil {
   // Will only show logs that are equal or greater than given level
   case level {
-    AllLogs -> erlang_configure_logs(Debug)
+    AllLogs -> erlang_configure_logs(Notice)
     ErrorsOnly -> erlang_configure_logs(Error)
     NoLogs -> erlang_configure_logs(Emergency)
   }
@@ -22,8 +22,8 @@ pub fn configure_logs(level: LogLevelFilter) -> Nil {
 @external(erlang, "olive_ffi", "configure_logs")
 fn erlang_configure_logs(level: LogLevel) -> Nil
 
-pub fn debug(msg: String) {
-  erlang_log(Debug, msg)
+pub fn notice(msg: String) {
+  erlang_log(Notice, msg)
 }
 
 pub fn error(msg: String) {

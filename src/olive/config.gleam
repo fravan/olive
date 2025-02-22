@@ -2,7 +2,9 @@ import argv
 import clip
 import clip/help
 import clip/opt
+import gleam/io
 import gleam/option
+import gleam/string
 import olive/logging
 import simplifile
 import tom
@@ -46,7 +48,7 @@ pub fn parse_from_cli() -> option.Option(Config) {
   {
     Ok(config) -> option.Some(config)
     Error(e) -> {
-      logging.debug(e)
+      io.println(e)
       option.None
     }
   }
@@ -75,9 +77,9 @@ fn bind_opt() {
 fn log_opt() {
   opt.new("log")
   |> opt.map(fn(v) {
-    case v {
-      "error" | "Error" -> logging.ErrorsOnly
-      "none" | "None" -> logging.NoLogs
+    case string.lowercase(v) {
+      "error" | "errors" | "errorsonly" | "erroronly" -> logging.ErrorsOnly
+      "none" | "nologs" -> logging.NoLogs
       _ -> logging.AllLogs
     }
   })

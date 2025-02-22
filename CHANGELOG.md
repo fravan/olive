@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-- Added main_port option
-- Added proxy_port option
-- Added bind option
+- Added `main_port` option
+- Added `proxy_port` option
+- Added `bind` option
+- Added `log` option
 
 All of the above options can be seen with `gleam run -m olive -- --help`
 

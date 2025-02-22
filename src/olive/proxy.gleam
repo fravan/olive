@@ -56,7 +56,7 @@ fn handle_websocket(
         mist.Custom(client_registry.Reload) -> {
           case mist.send_text_frame(conn, "reload") {
             Ok(_) -> {
-              logging.debug("Successfully sent reload message to client")
+              logging.notice("Successfully sent reload message to client")
               actor.continue(client)
             }
             Error(_) -> {
@@ -66,7 +66,7 @@ fn handle_websocket(
           }
         }
         mist.Closed | mist.Shutdown -> {
-          logging.debug("Client has disconnected")
+          logging.notice("Client has disconnected")
           client_registry.remove(clients, client)
           actor.Stop(process.Normal)
         }

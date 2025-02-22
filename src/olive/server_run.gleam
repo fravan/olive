@@ -40,7 +40,7 @@ pub fn reload_server_code() {
     <> msg
   })
   |> result.try(fn(output) {
-    logging.debug("Output of `gleam build`:\n" <> output)
+    logging.notice("Output of `gleam build`:\n" <> output)
     reload_modules()
     |> result.map_error(fn(_) { "Error while reloading Erlang modules" })
   })
