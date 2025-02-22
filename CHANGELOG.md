@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.1.0 - 2025-02-22
 
 - Added `main_port` option
 - Added `proxy_port` option
