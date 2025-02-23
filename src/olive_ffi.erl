@@ -47,7 +47,7 @@ format_level(Level) ->
         critical ->
             "\x1b[1;41mOLIVE - CRIT\x1b[0m";
         error ->
-            "\x1b[1;31mOLIVE - EROR\x1b[0m";
+            "\x1b[1;31mOLIVE - ERROR\x1b[0m";
         warning ->
             "\x1b[1;33mOLIVE - WARN\x1b[0m";
         notice ->
