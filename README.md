@@ -3,6 +3,15 @@
 [![Package Version](https://img.shields.io/hexpm/v/olive)](https://hex.pm/packages/olive)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/olive/)
 
+# Table of content
+- [Objectives](#objectives)
+  - [Who is this for?](#who-is-this-for)
+- [Caveats / Current limitations](#caveats--current-limitations)
+- [Installation and usage](#installation-and-usage)
+- [Example](#example)
+- [Logging](#logging)
+- [Technicalities](#technicalities)
+
 # Objectives
 
 Olive is a development tool to help working on a wisp server (AKA the _main server_ in this doc).
@@ -28,7 +37,6 @@ Anything else sent to the proxy is directly rerouted to your _main server_.
 - ✅ If you are working on a server that renders HTML (vanilla, htmx or others), this might interest you!
 
 # Caveats / Current limitations
-For now, the tool is very much a Proof of Concept.
 
 > Make sure to checkout the help for any configuration options with `gleam run -m olive -- --help`
 
@@ -36,15 +44,9 @@ Current limitations are:
 
 - Your _main server_ needs to answer with a valid html document and a `</head>` at some point.
   Olive uses that to inject a piece of javascript for the websocket to connect.
-- Olive must run in the root dir where `gleam.toml` is so it can get the name of the project to run it.
-- Olive only watches for changes under `src/` and nothing else
-- All of the above is not configurable but might be in the future!
+- Olive watches only for `.gleam` file changes under your project `src/` folder, as well as any path dependencies you might have.
+- Olive cannot reload any changes made in your main file where the `pub fn main()` is defined. See [Technicalities](#technicalities) for more info.
 
-
-Because of the nature of the `code:atomic_load`, any changes to your `main` function will not be taken into account.
-Basically, the gleam file ran by the default `gleam run`, which should be a wisp server,
-will never be replaced because it is always running. The BEAM never has a chance to swap for the new module.
-In this case, you have to kill olive and rerun it.
 
 # Installation and usage
 
@@ -109,8 +111,6 @@ Open localhost:1234, and you should be granted with a `Hello world`.
 Now update the file in `router.gleam` so the server sends back `Hello olive`, and voila!
 Your browser should refresh automatically after a quick rebuild and show you the new message 🎉
 
-Any updates to `src/my_project.gleam` will not work, as explained in the Caveats chapter.
-
 
 # Logging
 
@@ -127,3 +127,29 @@ It also adds the metadata `{domain => [olive]}` to any logs so you can add your 
 >
 > When rebuilding your project, any error from `gleam build` will be an Olive error log, and you won't
 > see it if it is turned off!
+
+# Technicalities
+
+After building your project, Olive runs your program for you, similar to how `gleam run` would.
+
+In technical words, it means Olive runs the following in erlang world:
+```erlang
+spawn_link("<your_project>@@main", run, ["<your_project>"]).
+```
+With `your_project` being the `name` defined in `gleam.toml`.
+
+
+The reload part lives also in erlang world, using this nice piece of code:
+```erlang
+reload_modules() ->
+    Modules = code:modified_modules(),
+    lists:foreach(fun(Mod) -> code:purge(Mod) end, Modules),
+    atomic_load(Modules).
+```
+This purges any modified modules that a `gleam build` would have produced, then replaces them on the fly.
+
+Next time one of this module is called, the new code will take the lead.
+This has one inconvenient, your main file never gets called more than once, so even if it gets replaced, it will always be the old code still running.
+Most of the time, the main file has a `process.sleep_forever()` so the old code stays.
+
+This is why any changes to your main file will need a reboot of olive.
