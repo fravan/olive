@@ -1,6 +1,6 @@
 # Changelog
 
-## Unrealeased
+## v1.2.0 - 2025-02-23
 
 ### Project dependencies 🛠
 Olive will parse your `gleam.toml` file to search for any dependencies you have with a `{ path = ".." }` resolution
