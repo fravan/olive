@@ -1,6 +1,15 @@
 -module(olive_ffi).
 
--export([reload_modules/0, spawn_main_server/2, configure_logs/1, log/2, format/2]).
+-export([get_cwd/0, reload_modules/0, spawn_main_server/2, configure_logs/1, log/2,
+         format/2, check_watcher_installed/0]).
+
+get_cwd() ->
+    case file:get_cwd() of
+        {ok, Dir} ->
+            {ok, list_to_binary(Dir)};
+        {error, Reason} ->
+            {error, Reason}
+    end.
 
 spawn_main_server(FullyQualifiedModule, Module) ->
     spawn_link(FullyQualifiedModule, run, [Module]).
@@ -64,4 +73,42 @@ format_msg(Report0) ->
             [$\s, Msg];
         _ ->
             [$\s, gleam@string:inspect(Report0)]
+    end.
+
+% From: https://github.com/lustre-labs/dev-tools
+% This is what the underlying `fs` library does to check if it has support for
+% a given os:
+%
+% https://github.com/5HT/fs/blob/23a5b46b033437a3d69504811ae6c72f7704a78a/src/fs_sup.erl#L18-L46
+%
+% Sadly the library doesn't expose such a function and just logs any error
+% instead of surfacing it as a value, so we have to implement a slightly
+% modified version of it to have proper error messages.
+check_watcher_installed() ->
+    Watcher =
+        case os:type() of
+            {unix, darwin} ->
+                fsevents;
+            {unix, linux} ->
+                inotifywait;
+            {unix, sunos} ->
+                undefined;
+            {unix, _} ->
+                kqueue;
+            {win32, nt} ->
+                inotifywait_win32;
+            _ ->
+                undefined
+        end,
+
+    case Watcher of
+        undefined ->
+            {error, no_file_watcher_supported_for_os};
+        _ ->
+            case Watcher:find_executable() of
+                false ->
+                    {error, {no_file_watcher_installed, Watcher}};
+                _ ->
+                    {ok, nil}
+            end
     end.
