@@ -1,7 +1,10 @@
 -module(olive_ffi).
 
--export([get_cwd/0, reload_modules/0, spawn_main_server/2, configure_logs/1, log/2,
-         format/2, check_watcher_installed/0]).
+-export([get_cwd/0, reload_modules/0, spawn_main_server/3, configure_logs/1, log/2,
+         format/2, check_watcher_installed/0, coerce/1]).
+
+coerce(X) ->
+    X.
 
 get_cwd() ->
     case file:get_cwd() of
@@ -11,8 +14,14 @@ get_cwd() ->
             {error, Reason}
     end.
 
-spawn_main_server(FullyQualifiedModule, Module) ->
-    spawn_link(FullyQualifiedModule, run, [Module]).
+spawn_main_server(Root, FullyQualifiedModule, Module) ->
+    % We want to make sure we execute the main server in the ROOT dir.
+    case file:set_cwd(Root) of
+        ok ->
+            {ok, spawn_link(FullyQualifiedModule, run, [Module])};
+        {error, Reason} ->
+            {error, Reason}
+    end.
 
 reload_modules() ->
     Modules = code:modified_modules(),

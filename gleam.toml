@@ -23,7 +23,6 @@ tom = ">= 1.1.1 and < 2.0.0"
 clip = ">= 1.0.0 and < 2.0.0"
 argv = ">= 1.0.2 and < 2.0.0"
 filepath = ">= 1.1.0 and < 2.0.0"
-server = { path = "../grimoire/server" }
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

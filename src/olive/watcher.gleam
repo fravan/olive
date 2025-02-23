@@ -5,17 +5,14 @@ import filepath
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/erlang/atom.{type Atom}
+import gleam/erlang/charlist
 import gleam/erlang/process.{type Subject, type Timer}
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type ErlangStartResult}
-import gleam/result
 import gleam/string
 import olive/config
 import olive/logging
-import olive/utils
-import simplifile
 
 type WatcherError {
   NoFileWatcherSupportedForOs
@@ -28,14 +25,11 @@ fn fs_start_link(name: Atom, path: String) -> ErlangStartResult
 @external(erlang, "fs", "subscribe")
 fn fs_subscribe(name: Atom) -> Atom
 
-@external(erlang, "olive_ffi", "get_cwd")
-fn get_cwd() -> Result(String, Atom)
-
 @external(erlang, "olive_ffi", "check_watcher_installed")
 fn check_watcher_installed() -> Result(Nil, WatcherError)
 
 pub type Message {
-  FilesChanged
+  FilesChanged(String)
 }
 
 type State {
@@ -51,14 +45,13 @@ pub fn start(config: config.Config, watch_subject: Subject(Message)) {
 }
 
 fn init_watcher(config: config.Config, watch_subject: Subject(Message)) {
-  check_watcher_install()
-  |> result.then(check_directories(config, _))
-  |> result.map(start_watchers)
-  |> result.map(fn(selectors) {
-    actor.Ready(State(None, watch_subject), selectors)
-  })
-  |> result.map_error(fn(err) { actor.Failed(err) })
-  |> result.unwrap_both
+  case check_watcher_install() {
+    Error(err) -> actor.Failed(err)
+    Ok(_) -> {
+      let selectors = start_watchers(config.dirs)
+      actor.Ready(State(None, watch_subject), selectors)
+    }
+  }
 }
 
 fn check_watcher_install() {
@@ -73,82 +66,39 @@ fn check_watcher_install() {
   }
 }
 
-fn check_directories(config: config.Config, _) -> Result(List(String), String) {
-  get_cwd()
-  |> result.map(io.debug)
-  |> result.map_error(fn(posix) {
-    "Could not get current working dir, error is: " <> atom.to_string(posix)
-  })
-  |> result.then(get_root)
-  |> result.then(fn(root) {
-    let dirs = case config.dirs {
-      [] -> ["src"]
-      _ -> config.dirs
-    }
-
-    let #(oks, errors) =
-      dirs
-      |> list.map(fn(dir) {
-        let full_path = filepath.join(root, dir)
-        filepath.expand(full_path)
-        |> result.map_error(fn(_) { "Could not find dir at " <> full_path })
-        |> result.try(fn(dir) {
-          case simplifile.is_directory(dir) {
-            Ok(True) -> Ok(dir)
-            Ok(False) | Error(_) ->
-              Error("Path: \"" <> dir <> "\" is not a directory")
-          }
-        })
-      })
-      |> result.partition
-
-    case errors {
-      [] -> Ok(oks)
-      _ -> Error(string.join(errors, with: "\n"))
-    }
-  })
-}
-
 fn start_watchers(dirs: List(String)) {
   dirs
   |> list.map(watch_folder)
   |> list.fold(from: process.new_selector(), with: process.merge_selector)
 }
 
-fn get_root(path: String) {
-  case simplifile.is_file(filepath.join(path, "gleam.toml")) {
-    Ok(True) -> Ok(path)
-    Ok(False) | Error(_) -> {
-      case filepath.expand(filepath.join(path, "..")) {
-        Ok(path) -> get_root(path)
-        Error(_) -> Error("Could not locate root dir where gleam.toml is")
-      }
-    }
-  }
-}
-
 fn do_loop(msg: InternalMsg, state: State) {
   case msg {
     IgnoreChanges -> actor.continue(state)
-    TriggerFilesChanged -> {
+    TriggerFilesChanged(file_name) -> {
       maybe_cancel_timer(state.debounce_timer)
       // Watcher sends multiple events for a same save,
       // so we debounce it to avoid multiple builds in a very short time
-      let timer = process.send_after(state.watch_subject, 50, FilesChanged)
+      let timer =
+        process.send_after(state.watch_subject, 50, FilesChanged(file_name))
       actor.continue(State(..state, debounce_timer: Some(timer)))
     }
   }
 }
 
 pub opaque type InternalMsg {
-  TriggerFilesChanged
+  TriggerFilesChanged(String)
   IgnoreChanges
 }
 
 fn maybe_cancel_timer(timer: Option(Timer)) {
-  use timer <- utils.from_option(timer)
-  process.cancel_timer(timer)
-  Nil
+  case timer {
+    option.None -> Nil
+    option.Some(timer) -> {
+      process.cancel_timer(timer)
+      Nil
+    }
+  }
 }
 
 fn watch_folder(dir: String) {
@@ -164,14 +114,19 @@ fn watch_folder(dir: String) {
 
 fn watch_decoder(msg: decode.Dynamic) {
   let decoder = {
+    use file_name <- decode.subfield([2, 0], erlang_string_to_string_decoder())
     use events <- decode.subfield([2, 1], decode.list(atom_to_watch_events()))
-    decode.success(events)
+
+    decode.success(#(file_name, events))
   }
   case decode.run(msg, decoder) {
-    Ok(events) ->
-      case list.contains(events, EventNeedingRebuild) {
-        True -> TriggerFilesChanged
-        False -> IgnoreChanges
+    Ok(#(file_name, events)) ->
+      case
+        filepath.extension(file_name),
+        list.contains(events, EventNeedingRebuild)
+      {
+        Ok("gleam"), True -> TriggerFilesChanged(file_name)
+        _, _ -> IgnoreChanges
       }
     Error(_) -> {
       logging.error("Error occured while watching files")
@@ -183,6 +138,15 @@ fn watch_decoder(msg: decode.Dynamic) {
 type WatchEvents {
   EventNeedingRebuild
   OtherEvents
+}
+
+@external(erlang, "olive_ffi", "coerce")
+fn coerce(item: a) -> b
+
+fn erlang_string_to_string_decoder() {
+  decode.new_primitive_decoder("ErlangString", fn(data) {
+    coerce(data) |> charlist.to_string |> Ok
+  })
 }
 
 /// Converts an atom to an event
