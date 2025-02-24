@@ -129,7 +129,20 @@ fn watch_decoder(logger: logging.Logger, msg: decode.Dynamic) {
         _, _ -> IgnoreChanges
       }
     Error(decode_errors) -> {
-      logging.error(logger, "Error occured while watching files")
+      let msg =
+        list.map(decode_errors, fn(error) {
+          let decode.DecodeError(expected, found, path) = error
+          "Expected "
+          <> expected
+          <> " at ["
+          <> string.join(path, ",")
+          <> "] but found "
+          <> found
+        })
+      logging.error(
+        logger,
+        "Error occured while watching files:\n" <> string.join(msg, "\n"),
+      )
       IgnoreChanges
     }
   }

@@ -1,6 +1,7 @@
 import gleam/erlang/atom
 import gleam/erlang/process.{type Subject}
 import gleam/otp/actor
+import gleam/string
 import olive/cli
 import olive/client_registry.{type ClientRegistry}
 import olive/config
@@ -73,16 +74,30 @@ fn listen_to_file_changes(
   let msg = process.receive_forever(subject)
   case msg {
     watcher.FilesChanged(file_name) -> {
-      logging.notice(config.logger, "File changed: " <> file_name)
-      case server_run.reload_server_code(config) {
-        Ok(_) -> {
-          client_registry.trigger(clients)
+      case is_main_file(config, file_name) {
+        True -> {
+          logging.warning(
+            config.logger,
+            "Main file changed. You need to restart olive for changes to be applied!",
+          )
         }
-        Error(msg) -> {
-          logging.error(config.logger, msg)
+        False -> {
+          logging.notice(config.logger, "File changed: " <> file_name)
+          case server_run.reload_server_code(config) {
+            Ok(_) -> {
+              client_registry.trigger(clients)
+            }
+            Error(msg) -> {
+              logging.error(config.logger, msg)
+            }
+          }
+          listen_to_file_changes(config, subject, clients)
         }
       }
     }
   }
-  listen_to_file_changes(config, subject, clients)
+}
+
+fn is_main_file(config: config.Config, file_name: String) {
+  string.ends_with(file_name, "src/" <> config.name <> ".gleam")
 }
