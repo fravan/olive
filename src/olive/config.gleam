@@ -11,6 +11,7 @@ import tom
 /// Holds all the important bits to run olive
 pub type Config {
   Config(
+    logger: logging.Logger,
     /// The main port needs to match the one listen by the main server
     main_port: Int,
     /// The proxy port is used by olive to create the web proxy server
@@ -30,8 +31,12 @@ pub type Config {
 @external(erlang, "olive_ffi", "get_cwd")
 fn get_cwd() -> Result(String, Atom)
 
-pub fn read_config(options: cli.CliOptions) -> Result(Config, String) {
+pub fn read_config(
+  logger: logging.Logger,
+  options: cli.CliOptions,
+) -> Result(Config, String) {
   logging.notice(
+    logger,
     "Reading gleam.toml to retrieve project's name and directories to watch",
   )
 
@@ -41,11 +46,13 @@ pub fn read_config(options: cli.CliOptions) -> Result(Config, String) {
   use deps <- result.try(read_project_dependencies(gleam_toml, root))
 
   logging.notice(
+    logger,
     "Olive will watch for changes in those folders:\n"
-    <> string.join(deps, "\n"),
+      <> string.join(deps, "\n"),
   )
 
   Ok(Config(
+    logger:,
     root:,
     name:,
     dirs: deps,

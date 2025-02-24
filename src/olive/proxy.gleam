@@ -24,7 +24,7 @@ pub fn start_http(config: config.Config, clients: ClientRegistry) {
     mist.ResponseData,
   ) {
     case request.path_segments(req) {
-      ["ws_livereload"] -> handle_websocket(req, clients)
+      ["ws_livereload"] -> handle_websocket(req, clients, config)
       _ -> handle_request(config, req)
     }
   }
@@ -37,6 +37,7 @@ pub fn start_http(config: config.Config, clients: ClientRegistry) {
 fn handle_websocket(
   req: request.Request(mist.Connection),
   clients: ClientRegistry,
+  config: config.Config,
 ) {
   mist.websocket(
     request: req,
@@ -56,17 +57,20 @@ fn handle_websocket(
         mist.Custom(client_registry.Reload) -> {
           case mist.send_text_frame(conn, "reload") {
             Ok(_) -> {
-              logging.notice("Successfully sent reload message to client")
+              logging.notice(
+                config.logger,
+                "Successfully sent reload message to client",
+              )
               actor.continue(client)
             }
             Error(_) -> {
-              logging.error("Could not send message to client")
+              logging.error(config.logger, "Could not send message to client")
               actor.Stop(process.Normal)
             }
           }
         }
         mist.Closed | mist.Shutdown -> {
-          logging.notice("Client has disconnected")
+          logging.notice(config.logger, "Client has disconnected")
           client_registry.remove(clients, client)
           actor.Stop(process.Normal)
         }
@@ -86,13 +90,13 @@ fn handle_request(config: config.Config, req: request.Request(mist.Connection)) 
   let assert Ok(req) = mist.read_body(req, 100 * 1024 * 1024)
   request.Request(..req, port: option.Some(config.main_port))
   |> httpc.send_bits
-  |> result.map(response.map(_, maybe_inject_sse))
+  |> result.map(response.map(_, maybe_inject_ws))
   |> result.map(response.map(_, bytes_tree.from_bit_array))
   |> result.map(response.map(_, mist.Bytes))
   |> result.unwrap(internal_error)
 }
 
-fn maybe_inject_sse(response: BitArray) {
+fn maybe_inject_ws(response: BitArray) {
   case bit_array.to_string(response) {
     Ok(str) -> bit_array.from_string(inject(str))
     Error(_) -> response

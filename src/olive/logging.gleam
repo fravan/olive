@@ -1,34 +1,55 @@
+import gleam/int
+import gleam/io
+import gleam/order
+
+pub opaque type Logger {
+  Logger(level: Int)
+}
+
 pub type LogLevel {
-  Emergency
+  None
   Error
+  Warning
   Notice
 }
 
-pub type LogLevelFilter {
-  AllLogs
-  ErrorsOnly
-  NoLogs
+pub fn get_logger(level: LogLevel) -> Logger {
+  Logger(get_log_level_value(level))
 }
 
-pub fn configure_logs(level: LogLevelFilter) -> Nil {
-  // Will only show logs that are equal or greater than given level
-  case level {
-    AllLogs -> erlang_configure_logs(Notice)
-    ErrorsOnly -> erlang_configure_logs(Error)
-    NoLogs -> erlang_configure_logs(Emergency)
+pub fn notice(logger: Logger, msg: String) {
+  log(logger, Notice, msg)
+}
+
+pub fn warning(logger: Logger, msg: String) {
+  log(logger, Warning, msg)
+}
+
+pub fn error(logger: Logger, msg: String) {
+  log(logger, Error, msg)
+}
+
+fn log(logger: Logger, level: LogLevel, msg: String) {
+  case int.compare(get_log_level_value(level), logger.level) {
+    order.Gt | order.Eq -> io.println(get_msg_format(level, msg))
+    order.Lt -> Nil
   }
 }
 
-@external(erlang, "olive_ffi", "configure_logs")
-fn erlang_configure_logs(level: LogLevel) -> Nil
-
-pub fn notice(msg: String) {
-  erlang_log(Notice, msg)
+fn get_msg_format(level: LogLevel, msg: String) {
+  case level {
+    None -> ""
+    Error -> "\u{001b}[31;1mOLIVE - ERROR:\u{001b}[0m " <> msg
+    Notice -> "\u{001b}[32;1mOLIVE - NOTICE:\u{001b}[0m " <> msg
+    Warning -> "\u{001b}[33;1mOLIVE - WARNING:\u{001b}[0m " <> msg
+  }
 }
 
-pub fn error(msg: String) {
-  erlang_log(Error, msg)
+fn get_log_level_value(level: LogLevel) {
+  case level {
+    None -> 9000
+    Error -> 10
+    Warning -> 5
+    Notice -> 1
+  }
 }
-
-@external(erlang, "olive_ffi", "log")
-fn erlang_log(level: LogLevel, message: String) -> Nil

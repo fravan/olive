@@ -48,7 +48,7 @@ fn init_watcher(config: config.Config, watch_subject: Subject(Message)) {
   case check_watcher_install() {
     Error(err) -> actor.Failed(err)
     Ok(_) -> {
-      let selectors = start_watchers(config.dirs)
+      let selectors = start_watchers(config)
       actor.Ready(State(None, watch_subject), selectors)
     }
   }
@@ -66,9 +66,9 @@ fn check_watcher_install() {
   }
 }
 
-fn start_watchers(dirs: List(String)) {
-  dirs
-  |> list.map(watch_folder)
+fn start_watchers(config: config.Config) {
+  config.dirs
+  |> list.map(watch_folder(config.logger, _))
   |> list.fold(from: process.new_selector(), with: process.merge_selector)
 }
 
@@ -101,18 +101,18 @@ fn maybe_cancel_timer(timer: Option(Timer)) {
   }
 }
 
-fn watch_folder(dir: String) {
+fn watch_folder(logger: logging.Logger, dir: String) {
   let atom = atom.create_from_string("fs_watcher_" <> dir)
   // the supervisor started by the fs lib always return {ok}
   let assert Ok(_) = fs_start_link(atom, dir)
   fs_subscribe(atom)
   let selectors =
     process.new_selector()
-    |> process.selecting_anything(watch_decoder)
+    |> process.selecting_anything(watch_decoder(logger, _))
   selectors
 }
 
-fn watch_decoder(msg: decode.Dynamic) {
+fn watch_decoder(logger: logging.Logger, msg: decode.Dynamic) {
   let decoder = {
     use file_name <- decode.subfield([2, 0], erlang_string_to_string_decoder())
     use events <- decode.subfield([2, 1], decode.list(atom_to_watch_events()))
@@ -128,8 +128,8 @@ fn watch_decoder(msg: decode.Dynamic) {
         Ok("gleam"), True -> TriggerFilesChanged(file_name)
         _, _ -> IgnoreChanges
       }
-    Error(_) -> {
-      logging.error("Error occured while watching files")
+    Error(decode_errors) -> {
+      logging.error(logger, "Error occured while watching files")
       IgnoreChanges
     }
   }

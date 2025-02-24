@@ -13,7 +13,7 @@ pub type CliOptions {
     main_port: Int,
     proxy_port: Int,
     bind: String,
-    log: logging.LogLevelFilter,
+    log: logging.LogLevel,
   )
 }
 
@@ -73,11 +73,14 @@ fn log_opt() {
   opt.new("log")
   |> opt.map(fn(v) {
     case string.lowercase(v) {
-      "error" | "errors" | "errorsonly" | "erroronly" -> logging.ErrorsOnly
-      "none" | "nologs" -> logging.NoLogs
-      _ -> logging.AllLogs
+      "error" | "errors" -> logging.Error
+      "warning" | "warnings" -> logging.Warning
+      "none" | "nologs" -> logging.None
+      _ -> logging.Notice
     }
   })
-  |> opt.default(logging.AllLogs)
-  |> opt.help("Either All, Error or None to filter logs from olive.")
+  |> opt.default(logging.Notice)
+  |> opt.help(
+    "Either None, Error, Warning, or Notice to filter logs from olive (will filter level below the one given).",
+  )
 }

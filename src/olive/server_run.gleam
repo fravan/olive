@@ -5,6 +5,7 @@ import gleam/erlang/atom
 import gleam/erlang/process
 import gleam/int
 import gleam/result
+import olive/config
 import olive/logging
 import shellout
 
@@ -29,8 +30,8 @@ pub fn start_server(root: String, name: String) {
   spawn_main_server(root, fully_qualified_module, module)
 }
 
-pub fn reload_server_code(root: String) {
-  shellout.command(run: "gleam", with: ["build"], in: root, opt: [])
+pub fn reload_server_code(config: config.Config) {
+  shellout.command(run: "gleam", with: ["build"], in: config.root, opt: [])
   |> result.map_error(fn(err) {
     let #(status, msg) = err
     "Error while building gleam project:\n"
@@ -39,7 +40,7 @@ pub fn reload_server_code(root: String) {
     <> msg
   })
   |> result.try(fn(output) {
-    logging.notice("Output of `gleam build`:\n" <> output)
+    logging.notice(config.logger, "Output of `gleam build`:\n" <> output)
     reload_modules()
     |> result.map_error(fn(_) { "Error while reloading Erlang modules" })
   })

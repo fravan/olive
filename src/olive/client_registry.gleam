@@ -20,25 +20,25 @@ type Message {
   TriggerClients
 }
 
-pub fn start() {
+pub fn start(logger: logging.Logger) {
   let assert Ok(subject) =
     actor.start(
       set.new(),
       fn(message: Message, state: Set(Subject(ClientMessage))) {
         case message {
           ClientConnected(client) -> {
-            logging.notice("Client connected")
+            logging.notice(logger, "Client connected")
             actor.continue(set.insert(state, client))
           }
           ClientDisconnected(client) -> {
-            logging.notice("Client disconnected")
+            logging.notice(logger, "Client disconnected")
             actor.continue(set.delete(state, client))
           }
           TriggerClients -> {
             case set.is_empty(state) {
               True -> actor.continue(state)
               False -> {
-                logging.notice("Triggering clients to reload")
+                logging.notice(logger, "Triggering clients to reload")
                 set.each(state, fn(client) { process.send(client, Reload) })
                 actor.continue(state)
               }
