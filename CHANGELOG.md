@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.0 - 2025-02-25
+
+### New features
+- Stop olive when the main file is updated and log a warning message to the user, prompting them to restart olive.
+
+### Fixes
+- Let `gleam build` show its original output instead of catching it (this way, we keep the colours, as well as the output even with olive logs disabled)
+- Force a `gleam build` when starting server for the first time
+
+### Minor changes
+- Updated some formats on logger output
+
 ## v1.2.0 - 2025-02-23
 
 ### Project dependencies 🛠
