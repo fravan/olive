@@ -48,15 +48,11 @@ fn get_msg_format(level: LogLevel, msg: String) {
     let formatted_msg = case level {
       None -> ""
       Error ->
-        get_formatted_msg(acc, msg, "\u{001b}[31;1mOLIVE - ERROR:\u{001b}[0m ")
+        get_formatted_msg(acc, msg, "\u{001b}[31;1mOLIVE - ERROR:\u{001b}[0m")
       Notice ->
-        get_formatted_msg(acc, msg, "\u{001b}[32;1mOLIVE - NOTICE:\u{001b}[0m ")
+        get_formatted_msg(acc, msg, "\u{001b}[32;1mOLIVE - NOTICE:\u{001b}[0m")
       Warning ->
-        get_formatted_msg(
-          acc,
-          msg,
-          "\u{001b}[33;1mOLIVE - WARNING:\u{001b}[0m ",
-        )
+        get_formatted_msg(acc, msg, "\u{001b}[33;1mOLIVE - WARNING:\u{001b}[0m")
     }
     acc <> formatted_msg
   })
@@ -64,8 +60,8 @@ fn get_msg_format(level: LogLevel, msg: String) {
 
 fn get_formatted_msg(acc: String, msg: String, format: String) {
   let #(new_line_prefix, indent) = case acc {
-    "" -> #("", "")
-    _ -> #("\n", "\t")
+    "" -> #("", " ")
+    _ -> #("\n", "    ")
   }
   new_line_prefix <> format <> indent <> msg
 }

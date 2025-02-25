@@ -23,13 +23,23 @@ fn spawn_main_server(
   module: atom.Atom,
 ) -> Result(process.Pid, atom.Atom)
 
-pub fn start_server(root: String, name: String) {
-  let assert Ok(fully_qualified_module) = atom.from_string(name <> "@@main")
-  let assert Ok(module) = atom.from_string(name)
-  spawn_main_server(root, fully_qualified_module, module)
+pub fn start_server(config: config.Config) {
+  use _ <- result.try(build_server(config))
+  use fully_qualified_module <- result.try(get_atom(config.name <> "@@main"))
+  use module <- result.try(get_atom(config.name))
+  spawn_main_server(config.root, fully_qualified_module, module)
+  |> result.map_error(posix_error_to_string(config, _))
 }
 
 pub fn reload_server_code(config: config.Config) {
+  build_server(config)
+  |> result.try(fn(_output) {
+    reload_modules()
+    |> result.map_error(fn(_) { "Error while reloading Erlang modules" })
+  })
+}
+
+fn build_server(config: config.Config) {
   logging.notice(config.logger, "Launching new build via `gleam build`")
   shellout.command(run: "gleam", with: ["build"], in: config.root, opt: [
     shellout.LetBeStderr,
@@ -38,8 +48,16 @@ pub fn reload_server_code(config: config.Config) {
   |> result.replace_error(
     "Error while building gleam project, see gleam output ☝️",
   )
-  |> result.try(fn(_output) {
-    reload_modules()
-    |> result.map_error(fn(_) { "Error while reloading Erlang modules" })
-  })
+}
+
+fn get_atom(name: String) {
+  atom.from_string(name)
+  |> result.replace_error("Cannot find loaded atom " <> name)
+}
+
+fn posix_error_to_string(config: config.Config, posix: atom.Atom) {
+  "Cannot launch server in "
+  <> config.root
+  <> " because of the following: "
+  <> atom.to_string(posix)
 }

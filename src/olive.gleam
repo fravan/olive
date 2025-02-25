@@ -49,7 +49,7 @@ fn run_olive(config: config.Config) {
         "Watcher shutdown before end of initialisation",
       )
     Ok(_) -> {
-      case server_run.start_server(config.root, config.name) {
+      case server_run.start_server(config) {
         Ok(_pid) -> {
           let assert Ok(_) = proxy.start_http(config, clients)
 
@@ -58,7 +58,7 @@ fn run_olive(config: config.Config) {
         Error(reason) -> {
           logging.error(
             config.logger,
-            "Could not start server for this reason: " <> atom.to_string(reason),
+            "Could not start your server:\n" <> reason,
           )
         }
       }
