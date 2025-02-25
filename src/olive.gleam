@@ -1,4 +1,3 @@
-import gleam/erlang/atom
 import gleam/erlang/process.{type Subject}
 import gleam/otp/actor
 import gleam/string
