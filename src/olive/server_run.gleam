@@ -3,7 +3,6 @@
 
 import gleam/erlang/atom
 import gleam/erlang/process
-import gleam/int
 import gleam/result
 import olive/config
 import olive/logging
@@ -31,19 +30,16 @@ pub fn start_server(root: String, name: String) {
 }
 
 pub fn reload_server_code(config: config.Config) {
-  shellout.command(run: "gleam", with: ["build"], in: config.root, opt: [])
-  |> result.map_error(shellout_to_error)
-  |> result.try(fn(output) {
-    logging.notice(config.logger, "Output of `gleam build`:\n" <> output)
+  logging.notice(config.logger, "Launching new build via `gleam build`")
+  shellout.command(run: "gleam", with: ["build"], in: config.root, opt: [
+    shellout.LetBeStderr,
+    shellout.LetBeStdout,
+  ])
+  |> result.replace_error(
+    "Error while building gleam project, see gleam output ☝️",
+  )
+  |> result.try(fn(_output) {
     reload_modules()
     |> result.map_error(fn(_) { "Error while reloading Erlang modules" })
   })
-}
-
-fn shellout_to_error(err: #(Int, String)) {
-  let #(status, msg) = err
-  "Error while building gleam project:\n"
-  <> int.to_string(status)
-  <> " - "
-  <> msg
 }

@@ -1,6 +1,9 @@
+import gleam/bool
 import gleam/int
 import gleam/io
+import gleam/list
 import gleam/order
+import gleam/string
 
 pub opaque type Logger {
   Logger(level: Int)
@@ -37,12 +40,34 @@ fn log(logger: Logger, level: LogLevel, msg: String) {
 }
 
 fn get_msg_format(level: LogLevel, msg: String) {
-  case level {
-    None -> ""
-    Error -> "\u{001b}[31;1mOLIVE - ERROR:\u{001b}[0m " <> msg
-    Notice -> "\u{001b}[32;1mOLIVE - NOTICE:\u{001b}[0m " <> msg
-    Warning -> "\u{001b}[33;1mOLIVE - WARNING:\u{001b}[0m " <> msg
+  use <- bool.guard(when: level == None, return: "")
+
+  msg
+  |> string.split(on: "\n")
+  |> list.fold(from: "", with: fn(acc, msg) {
+    let formatted_msg = case level {
+      None -> ""
+      Error ->
+        get_formatted_msg(acc, msg, "\u{001b}[31;1mOLIVE - ERROR:\u{001b}[0m ")
+      Notice ->
+        get_formatted_msg(acc, msg, "\u{001b}[32;1mOLIVE - NOTICE:\u{001b}[0m ")
+      Warning ->
+        get_formatted_msg(
+          acc,
+          msg,
+          "\u{001b}[33;1mOLIVE - WARNING:\u{001b}[0m ",
+        )
+    }
+    acc <> formatted_msg
+  })
+}
+
+fn get_formatted_msg(acc: String, msg: String, format: String) {
+  let #(new_line_prefix, indent) = case acc {
+    "" -> #("", "")
+    _ -> #("\n", "\t")
   }
+  new_line_prefix <> format <> indent <> msg
 }
 
 fn get_log_level_value(level: LogLevel) {
