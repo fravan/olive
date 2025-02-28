@@ -1,12 +1,19 @@
 import filepath
 import gleam/dict
 import gleam/erlang/atom.{type Atom}
+import gleam/list
+import gleam/option
 import gleam/result
 import gleam/string
 import olive/cli
 import olive/logging
 import simplifile
 import tom
+
+pub type Directory {
+  SourceDirectory(path: String)
+  PrivDirectory(path: String)
+}
 
 /// Holds all the important bits to run olive
 pub type Config {
@@ -24,7 +31,7 @@ pub type Config {
     /// The name of the project (field "name" in gleam.toml)
     name: String,
     /// The list of dirs olive needs to watch to trigger live reload
-    dirs: List(String),
+    dirs: List(Directory),
   )
 }
 
@@ -48,7 +55,7 @@ pub fn read_config(
   logging.notice(
     logger,
     "Olive will watch for changes in those folders:\n"
-      <> string.join(deps, "\n"),
+      <> string.join(list.map(deps, string.inspect), "\n"),
   )
 
   Ok(Config(
@@ -73,23 +80,55 @@ fn read_project_dependencies(toml: TomlFile, root: String) {
   // We want path dependencies only.
   // Path dependencies such as `common = { path = "../common" }` will be
   // watched at "../common/src" as well as the main src folder.
+  let source_directory = check_source_directory(root)
+  let priv_directory = check_priv_directory(root)
+
   tom.get_table(toml, ["dependencies"])
   |> result.map_error(tom_field_error_to_string)
   |> result.map(fn(deps) {
     deps
-    |> dict.fold(from: [filepath.join(root, "src")], with: fn(acc, _key, value) {
-      case value {
-        tom.InlineTable(table) -> {
-          case dict.get(table, "path") {
-            Error(_) -> acc
-            Ok(tom.String(path)) -> [get_full_path(root, path), ..acc]
-            Ok(_) -> acc
+    |> dict.fold(
+      from: [source_directory, priv_directory],
+      with: fn(acc, _key, value) {
+        case value {
+          tom.InlineTable(table) -> {
+            case dict.get(table, "path") {
+              Error(_) -> acc
+              Ok(tom.String(path)) -> {
+                let full_path = filepath.join(root, path)
+                let source_dir = check_source_directory(full_path)
+                let priv_dir = check_priv_directory(full_path)
+                [source_dir, priv_dir, ..acc]
+              }
+              Ok(_) -> acc
+            }
           }
+          _ -> acc
         }
-        _ -> acc
-      }
-    })
+      },
+    )
+    |> option.values
   })
+}
+
+fn check_source_directory(root: String) {
+  check_directory(filepath.join(root, "src"), SourceDirectory)
+}
+
+fn check_priv_directory(root: String) {
+  check_directory(filepath.join(root, "priv"), PrivDirectory)
+}
+
+fn check_directory(path: String, ctor: fn(String) -> Directory) {
+  case filepath.expand(path) {
+    Ok(full_path) -> {
+      case simplifile.is_directory(full_path) {
+        Ok(True) -> option.Some(ctor(full_path))
+        Ok(False) | Error(_) -> option.None
+      }
+    }
+    Error(Nil) -> option.None
+  }
 }
 
 fn get_gleam_toml_path() -> Result(String, String) {
@@ -108,16 +147,6 @@ fn get_root(path: String) -> Result(String, String) {
       }
     }
   }
-}
-
-fn get_full_path(root: String, path: String) {
-  // path comes from gleam.toml so we can probably assert with good knowlegde
-  // `gleam build` would not compile if the path was wrong anyway…
-  let assert Ok(full_path) =
-    filepath.join(root, path)
-    |> filepath.join("src")
-    |> filepath.expand
-  full_path
 }
 
 fn read_gleam_toml(path: String) -> Result(TomlFile, String) {

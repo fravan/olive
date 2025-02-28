@@ -1,4 +1,5 @@
 import gleam/erlang/process.{type Subject}
+import gleam/list
 import gleam/otp/actor
 import gleam/string
 import olive/cli
@@ -72,8 +73,8 @@ fn listen_to_file_changes(
 ) {
   let msg = process.receive_forever(subject)
   case msg {
-    watcher.FilesChanged(file_name) -> {
-      case is_main_file(config, file_name) {
+    watcher.FilesChanged(changes) -> {
+      case has_main_file(config, changes) {
         True -> {
           logging.warning(
             config.logger,
@@ -81,7 +82,11 @@ fn listen_to_file_changes(
           )
         }
         False -> {
-          logging.notice(config.logger, "File changed: " <> file_name)
+          let changelog =
+            changes
+            |> list.map(fn(change) { change.file_name })
+            |> string.join("\n")
+          logging.notice(config.logger, "File changed:\n" <> changelog)
           case server_run.reload_server_code(config) {
             Ok(_) -> {
               client_registry.trigger(clients)
@@ -97,6 +102,8 @@ fn listen_to_file_changes(
   }
 }
 
-fn is_main_file(config: config.Config, file_name: String) {
-  string.ends_with(file_name, "src/" <> config.name <> ".gleam")
+fn has_main_file(config: config.Config, changes: List(watcher.Change)) {
+  let main_file = "src/" <> config.name <> ".gleam"
+  changes
+  |> list.any(fn(change) { string.ends_with(change.file_name, main_file) })
 }
