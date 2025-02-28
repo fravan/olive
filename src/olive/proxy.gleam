@@ -18,6 +18,8 @@ import mist
 import olive/client_registry.{type ClientRegistry}
 import olive/config
 import olive/logging
+import simplifile
+import wisp
 
 pub fn start_http(config: config.Config, clients: ClientRegistry) {
   fn(req: request.Request(mist.Connection)) -> response.Response(
@@ -104,28 +106,9 @@ fn maybe_inject_ws(response: BitArray) {
 }
 
 fn inject(html: String) -> String {
-  let script =
-    "<script>
-    let liveReloadWebSocket = null;
-    let reconnectTimeout = null;
-
-    function connect() {
-      clearTimeout(reconnectTimeout);
-      liveReloadWebSocket = new WebSocket(`ws://${window.location.host}/ws_livereload`);
-
-      liveReloadWebSocket.onmessage = (event) => {
-        window.location.reload();
-      };
-      liveReloadWebSocket.onclose = reconnect;
-      liveReloadWebSocket.onerror = reconnect;
-    }
-
-    function reconnect() {
-      clearTimeout(reconnectTimeout);
-      reconnectTimeout = setTimeout(connect, 5000);
-    }
-    connect();
-  </script>"
+  let assert Ok(priv_dir) = wisp.priv_directory("olive")
+  let assert Ok(file_content) = simplifile.read(priv_dir <> "/proxy.js")
+  let script = "<script>" <> file_content <> "</script>"
 
   html
   |> string.replace("</head>", script <> "</head>")
