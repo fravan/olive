@@ -1,10 +1,9 @@
 # Changelog
 
-## v1.4.0 - 2025-03-XX
-
-### New features
+## v1.4.0 - 2025-03-03
 - Olive can now watch for `priv` directory, and any changes in them. It will trigger clients to reload __WITHOUT__ rebuilding your project.
 - Added `watch_debounce` option in CLI.
+- Added `debug` level for logger. Olive is quieter by default.
 
 ## v1.3.1 - 2025-03-03
 - Relaxed `gleam_http` constraint to permit v4.
