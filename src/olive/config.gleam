@@ -54,8 +54,7 @@ pub fn read_config(
 
   logging.notice(
     logger,
-    "Olive will watch for changes in those folders:\n"
-      <> string.join(list.map(deps, string.inspect), "\n"),
+    "Olive will watch for changes in those folders:\n" <> print_deps(deps),
   )
 
   Ok(Config(
@@ -157,6 +156,18 @@ fn read_gleam_toml(path: String) -> Result(TomlFile, String) {
     tom.parse(content)
     |> result.map_error(tom_error_to_string)
   })
+}
+
+fn print_deps(deps: List(Directory)) {
+  string.join(
+    list.map(deps, fn(dir) {
+      case dir {
+        PrivDirectory(path) -> "Any changes in: " <> path
+        SourceDirectory(path) -> "Code changes in: " <> path
+      }
+    }),
+    "\n",
+  )
 }
 
 // ERROR MAPPERS -------------------------------------------------

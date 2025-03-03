@@ -7,6 +7,7 @@ import gleam/dynamic/decode
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/charlist
 import gleam/erlang/process.{type Subject, type Timer}
+import gleam/function
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type ErlangStartResult}
@@ -42,6 +43,7 @@ type State {
   State(
     debounce_timer: Option(Timer),
     watch_subject: Subject(Message),
+    actor_subject: Subject(InternalMsg),
     current_changes: Set(Change),
   )
 }
@@ -58,8 +60,13 @@ fn init_watcher(config: config.Config, watch_subject: Subject(Message)) {
   case check_watcher_install() {
     Error(err) -> actor.Failed(err)
     Ok(_) -> {
-      let selectors = start_watchers(config)
-      actor.Ready(State(None, watch_subject, set.new()), selectors)
+      let subject = process.new_subject()
+      start_directory_watchers(config, subject)
+
+      let selector =
+        process.new_selector()
+        |> process.selecting(subject, function.identity)
+      actor.Ready(State(None, watch_subject, subject, set.new()), selector)
     }
   }
 }
@@ -76,15 +83,32 @@ fn check_watcher_install() {
   }
 }
 
-fn start_watchers(config: config.Config) {
+fn start_directory_watchers(
+  config: config.Config,
+  subject: process.Subject(InternalMsg),
+) {
   config.dirs
-  |> list.map(watch_folder(config.logger, _))
-  |> list.fold(from: process.new_selector(), with: process.merge_selector)
+  |> list.each(start_directory_watcher(config.logger, subject, _))
+}
+
+pub opaque type InternalMsg {
+  TriggerFilesChanged(file_name: String, dir: config.Directory)
+  TriggerWatcher
+  IgnoreChanges
 }
 
 fn do_loop(msg: InternalMsg, state: State) {
   case msg {
     IgnoreChanges -> actor.continue(state)
+    TriggerWatcher -> {
+      process.send(
+        state.watch_subject,
+        FilesChanged(set.to_list(state.current_changes)),
+      )
+      actor.continue(
+        State(..state, debounce_timer: None, current_changes: set.new()),
+      )
+    }
     TriggerFilesChanged(file_name, dir) -> {
       maybe_cancel_timer(state.debounce_timer)
       // Watcher sends multiple events for a same save,
@@ -95,22 +119,12 @@ fn do_loop(msg: InternalMsg, state: State) {
         config.PrivDirectory(_) -> PrivChange(file_name)
       }
       let current_changes = set.insert(state.current_changes, new_change)
-      let timer =
-        process.send_after(
-          state.watch_subject,
-          50,
-          FilesChanged(set.to_list(current_changes)),
-        )
+      let timer = process.send_after(state.actor_subject, 50, TriggerWatcher)
       actor.continue(
         State(..state, debounce_timer: Some(timer), current_changes:),
       )
     }
   }
-}
-
-pub opaque type InternalMsg {
-  TriggerFilesChanged(file_name: String, dir: config.Directory)
-  IgnoreChanges
 }
 
 fn maybe_cancel_timer(timer: Option(Timer)) {
@@ -123,15 +137,36 @@ fn maybe_cancel_timer(timer: Option(Timer)) {
   }
 }
 
-fn watch_folder(logger: logging.Logger, dir: config.Directory) {
-  let atom = atom.create_from_string("fs_watcher_" <> dir.path)
-  // the supervisor started by the fs lib always return {ok}
-  let assert Ok(_) = fs_start_link(atom, dir.path)
-  fs_subscribe(atom)
-  let selectors =
-    process.new_selector()
-    |> process.selecting_anything(watch_decoder(logger, dir, _))
-  selectors
+fn start_directory_watcher(
+  logger: logging.Logger,
+  subject: process.Subject(InternalMsg),
+  dir: config.Directory,
+) {
+  // Each watcher lives it its own process so it can listen to the messages
+  // sent by the `fs` library.
+  process.start(
+    fn() {
+      let atom = atom.create_from_string("fs_watcher_" <> dir.path)
+      // the supervisor started by the fs lib always return {ok}
+      let assert Ok(_) = fs_start_link(atom, dir.path)
+      fs_subscribe(atom)
+      let selector =
+        process.new_selector()
+        |> process.selecting_anything(watch_decoder(logger, dir, _))
+
+      listen_directory_watcher(selector, subject)
+    },
+    True,
+  )
+}
+
+fn listen_directory_watcher(
+  selector: process.Selector(InternalMsg),
+  subject: process.Subject(InternalMsg),
+) {
+  let msg = process.select_forever(selector)
+  process.send(subject, msg)
+  listen_directory_watcher(selector, subject)
 }
 
 fn watch_decoder(
