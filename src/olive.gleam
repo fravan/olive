@@ -86,7 +86,7 @@ fn listen_to_file_changes(
             changes
             |> list.map(fn(change) { change.file_name })
             |> string.join("\n")
-          logging.notice(config.logger, "File changed:\n" <> changelog)
+          logging.debug(config.logger, "Files changed:\n" <> changelog)
 
           let after_build = case needs_rebuild(changes) {
             True -> server_run.reload_server_code(config)

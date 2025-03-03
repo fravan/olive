@@ -79,12 +79,13 @@ fn log_opt() {
       "error" | "errors" -> logging.Error
       "warning" | "warnings" -> logging.Warning
       "none" | "nologs" -> logging.None
+      "debug" -> logging.Debug
       _ -> logging.Notice
     }
   })
   |> opt.default(logging.Notice)
   |> opt.help(
-    "Either None, Error, Warning, or Notice to filter logs from olive (will filter level below the one given).",
+    "Either None, Error, Warning, Notice or Debug to filter logs from olive.",
   )
 }
 

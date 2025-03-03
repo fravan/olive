@@ -14,10 +14,15 @@ pub type LogLevel {
   Error
   Warning
   Notice
+  Debug
 }
 
 pub fn get_logger(level: LogLevel) -> Logger {
   Logger(get_log_level_value(level))
+}
+
+pub fn debug(logger: Logger, msg: String) {
+  log(logger, Debug, msg)
 }
 
 pub fn notice(logger: Logger, msg: String) {
@@ -53,6 +58,8 @@ fn get_msg_format(level: LogLevel, msg: String) {
         get_formatted_msg(acc, msg, "\u{001b}[32;1mOLIVE - NOTICE:\u{001b}[0m")
       Warning ->
         get_formatted_msg(acc, msg, "\u{001b}[33;1mOLIVE - WARNING:\u{001b}[0m")
+      Debug ->
+        get_formatted_msg(acc, msg, "\u{001b}[34;1mOLIVE - DEBUG:\u{001b}[0m")
     }
     acc <> formatted_msg
   })
@@ -69,8 +76,9 @@ fn get_formatted_msg(acc: String, msg: String, format: String) {
 fn get_log_level_value(level: LogLevel) {
   case level {
     None -> 9000
-    Error -> 10
-    Warning -> 5
-    Notice -> 1
+    Error -> 100
+    Warning -> 50
+    Notice -> 10
+    Debug -> 2
   }
 }

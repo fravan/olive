@@ -72,7 +72,7 @@ fn handle_websocket(
           }
         }
         mist.Closed | mist.Shutdown -> {
-          logging.notice(config.logger, "Client has disconnected")
+          logging.warning(config.logger, "Client has disconnected unexpectedly")
           client_registry.remove(clients, client)
           actor.Stop(process.Normal)
         }

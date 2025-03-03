@@ -54,7 +54,7 @@ pub fn read_config(
   use name <- result.try(read_project_name(gleam_toml))
   use deps <- result.try(read_project_dependencies(gleam_toml, root))
 
-  logging.notice(
+  logging.debug(
     logger,
     "Olive will watch for changes in those folders:\n" <> print_deps(deps),
   )
