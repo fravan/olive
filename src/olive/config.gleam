@@ -32,6 +32,8 @@ pub type Config {
     name: String,
     /// The list of dirs olive needs to watch to trigger live reload
     dirs: List(Directory),
+    /// The debounce in ms to use for file watchers
+    debounce_in_ms: Int,
   )
 }
 
@@ -65,6 +67,7 @@ pub fn read_config(
     bind: options.bind,
     main_port: options.main_port,
     proxy_port: options.proxy_port,
+    debounce_in_ms: options.debounce_in_ms,
   ))
 }
 

@@ -42,6 +42,7 @@ pub type Message {
 type State {
   State(
     debounce_timer: Option(Timer),
+    debounce_in_ms: Int,
     watch_subject: Subject(Message),
     actor_subject: Subject(InternalMsg),
     current_changes: Set(Change),
@@ -66,7 +67,10 @@ fn init_watcher(config: config.Config, watch_subject: Subject(Message)) {
       let selector =
         process.new_selector()
         |> process.selecting(subject, function.identity)
-      actor.Ready(State(None, watch_subject, subject, set.new()), selector)
+      actor.Ready(
+        State(None, config.debounce_in_ms, watch_subject, subject, set.new()),
+        selector,
+      )
     }
   }
 }
@@ -119,7 +123,12 @@ fn do_loop(msg: InternalMsg, state: State) {
         config.PrivDirectory(_) -> PrivChange(file_name)
       }
       let current_changes = set.insert(state.current_changes, new_change)
-      let timer = process.send_after(state.actor_subject, 50, TriggerWatcher)
+      let timer =
+        process.send_after(
+          state.actor_subject,
+          state.debounce_in_ms,
+          TriggerWatcher,
+        )
       actor.continue(
         State(..state, debounce_timer: Some(timer), current_changes:),
       )

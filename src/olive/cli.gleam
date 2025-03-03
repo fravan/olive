@@ -14,6 +14,7 @@ pub type CliOptions {
     proxy_port: Int,
     bind: String,
     log: logging.LogLevel,
+    debounce_in_ms: Int,
   )
 }
 
@@ -24,13 +25,15 @@ pub fn get_options() -> Result(CliOptions, Nil) {
       use proxy_port <- clip.parameter
       use bind <- clip.parameter
       use log <- clip.parameter
+      use debounce_in_ms <- clip.parameter
 
-      CliOptions(main_port:, proxy_port:, bind:, log:)
+      CliOptions(main_port:, proxy_port:, bind:, log:, debounce_in_ms:)
     })
     |> clip.opt(main_port_opt())
     |> clip.opt(proxy_port_opt())
     |> clip.opt(bind_opt())
     |> clip.opt(log_opt())
+    |> clip.opt(debounce_in_ms_opt())
     |> clip.help(help.simple(
       "olive",
       "Runs a dev proxy for easy live reloading and automatic code changes",
@@ -82,5 +85,15 @@ fn log_opt() {
   |> opt.default(logging.Notice)
   |> opt.help(
     "Either None, Error, Warning, or Notice to filter logs from olive (will filter level below the one given).",
+  )
+}
+
+fn debounce_in_ms_opt() {
+  opt.new("watch_debounce")
+  |> opt.int
+  |> opt.default(50)
+  |> opt.help(
+    "Debounce in ms used before triggering a rebuild and client reload.
+    Useful when you have multiple changes in a short period of time.",
   )
 }
