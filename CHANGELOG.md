@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.3.1 - 2025-03-03
+- Relaxed `gleam_http` constraint to permit v4.
+
 ## v1.3.0 - 2025-02-25
 
 ### New features
