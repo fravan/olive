@@ -31,7 +31,7 @@ fn fs_subscribe(name: Atom) -> Atom
 fn check_watcher_installed() -> Result(Nil, WatcherError)
 
 pub type Change {
-  SourceChange(file_name: String)
+  SourceChange(file_name: String, dir_path: String, uses_lustre_dev_tools: Bool)
   PrivChange(file_name: String)
 }
 
@@ -119,7 +119,8 @@ fn do_loop(msg: InternalMsg, state: State) {
       // so we debounce it to avoid multiple builds in a very short time
       // we also avoid adding it again to the current debounced changes
       let new_change = case dir {
-        config.SourceDirectory(_) -> SourceChange(file_name)
+        config.SourceDirectory(path:, uses_lustre_dev_tools:) ->
+          SourceChange(file_name, dir_path: path, uses_lustre_dev_tools:)
         config.PrivDirectory(_) -> PrivChange(file_name)
       }
       let current_changes = set.insert(state.current_changes, new_change)
@@ -190,7 +191,7 @@ fn watch_decoder(
     decode.success(#(file_name, events))
   }
   case decode.run(msg, decoder), dir {
-    Ok(#(file_name, events)), config.SourceDirectory(_) ->
+    Ok(#(file_name, events)), config.SourceDirectory(..) ->
       case filepath.extension(file_name), list.contains(events, UpdatedFile) {
         Ok("gleam"), True -> TriggerFilesChanged(file_name, dir)
         _, _ -> IgnoreChanges

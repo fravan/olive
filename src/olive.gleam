@@ -89,7 +89,7 @@ fn listen_to_file_changes(
           logging.debug(config.logger, "Files changed:\n" <> changelog)
 
           let after_build = case needs_rebuild(changes) {
-            True -> server_run.reload_server_code(config)
+            True -> server_run.reload_server_code(config, changes)
             False -> Ok(Nil)
           }
 
