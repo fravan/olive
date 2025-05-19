@@ -89,7 +89,14 @@ fn listen_to_file_changes(
           logging.debug(config.logger, "Files changed:\n" <> changelog)
 
           let after_build = case needs_rebuild(changes) {
-            True -> server_run.reload_server_code(config, changes)
+            True ->
+              server_run.reload_server_code(
+                config,
+                changes
+                  |> list.map(fn(change) { change.dir })
+                  |> list.unique,
+              )
+
             False -> Ok(Nil)
           }
 
@@ -118,8 +125,8 @@ fn needs_rebuild(changes: List(watcher.Change)) {
   changes
   |> list.any(fn(change) {
     case change {
-      watcher.SourceChange(..) -> True
-      watcher.PrivChange(..) -> False
+      watcher.Change(dir: config.SourceDirectory(..), ..) -> True
+      watcher.Change(dir: config.PrivDirectory(..), ..) -> False
     }
   })
 }

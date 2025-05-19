@@ -31,8 +31,7 @@ fn fs_subscribe(name: Atom) -> Atom
 fn check_watcher_installed() -> Result(Nil, WatcherError)
 
 pub type Change {
-  SourceChange(file_name: String, dir_path: String, uses_lustre_dev_tools: Bool)
-  PrivChange(file_name: String)
+  Change(file_name: String, dir: config.Directory)
 }
 
 pub type Message {
@@ -118,11 +117,7 @@ fn do_loop(msg: InternalMsg, state: State) {
       // Watcher sends multiple events for a same save,
       // so we debounce it to avoid multiple builds in a very short time
       // we also avoid adding it again to the current debounced changes
-      let new_change = case dir {
-        config.SourceDirectory(path:, uses_lustre_dev_tools:) ->
-          SourceChange(file_name, dir_path: path, uses_lustre_dev_tools:)
-        config.PrivDirectory(_) -> PrivChange(file_name)
-      }
+      let new_change = Change(file_name:, dir:)
       let current_changes = set.insert(state.current_changes, new_change)
       let timer =
         process.send_after(

@@ -164,7 +164,7 @@ fn get_gleam_toml_path() -> Result(String, String) {
   |> result.then(get_root)
 }
 
-fn get_root(path: String) -> Result(String, String) {
+pub fn get_root(path: String) -> Result(String, String) {
   case simplifile.is_file(filepath.join(path, "gleam.toml")) {
     Ok(True) -> Ok(path)
     Ok(False) | Error(_) -> {
