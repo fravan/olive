@@ -51,7 +51,7 @@ fn build_server(config: config.Config) {
 }
 
 fn get_atom(name: String) {
-  atom.from_string(name)
+  atom.get(name)
   |> result.replace_error("Cannot find loaded atom " <> name)
 }
 

@@ -7,10 +7,9 @@ import gleam/dynamic/decode
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/charlist
 import gleam/erlang/process.{type Subject, type Timer}
-import gleam/function
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/otp/actor.{type ErlangStartResult}
+import gleam/otp/actor
 import gleam/set.{type Set}
 import gleam/string
 import olive/config
@@ -22,7 +21,7 @@ type WatcherError {
 }
 
 @external(erlang, "fs", "start_link")
-fn fs_start_link(name: Atom, path: String) -> ErlangStartResult
+fn fs_start_link(name: Atom, path: String) -> Result(Nil, Nil)
 
 @external(erlang, "fs", "subscribe")
 fn fs_subscribe(name: Atom) -> Atom
@@ -50,29 +49,30 @@ type State {
 }
 
 pub fn start(config: config.Config, watch_subject: Subject(Message)) {
-  actor.start_spec(
-    actor.Spec(init_timeout: 5000, loop: do_loop, init: fn() {
-      init_watcher(config, watch_subject)
-    }),
-  )
-}
-
-fn init_watcher(config: config.Config, watch_subject: Subject(Message)) {
-  case check_watcher_install() {
-    Error(err) -> actor.Failed(err)
-    Ok(_) -> {
-      let subject = process.new_subject()
-      start_directory_watchers(config, subject)
-
-      let selector =
-        process.new_selector()
-        |> process.selecting(subject, function.identity)
-      actor.Ready(
-        State(None, config.debounce_in_ms, watch_subject, subject, set.new()),
-        selector,
-      )
+  actor.new_with_initialiser(5000, fn(_messages) {
+    case check_watcher_install() {
+      Error(err) -> Error(err)
+      Ok(_) -> {
+        let subject = process.new_subject()
+        start_directory_watchers(config, subject)
+        let selector =
+          process.new_selector()
+          |> process.select(subject)
+        Ok(
+          actor.initialised(State(
+            None,
+            config.debounce_in_ms,
+            watch_subject,
+            subject,
+            set.new(),
+          ))
+          |> actor.selecting(selector),
+        )
+      }
     }
-  }
+  })
+  |> actor.on_message(do_loop)
+  |> actor.start
 }
 
 fn check_watcher_install() {
@@ -101,7 +101,7 @@ pub opaque type InternalMsg {
   IgnoreChanges
 }
 
-fn do_loop(msg: InternalMsg, state: State) {
+fn do_loop(state: State, msg: InternalMsg) {
   case msg {
     IgnoreChanges -> actor.continue(state)
     TriggerWatcher -> {
@@ -153,27 +153,24 @@ fn start_directory_watcher(
 ) {
   // Each watcher lives it its own process so it can listen to the messages
   // sent by the `fs` library.
-  process.start(
-    fn() {
-      let atom = atom.create_from_string("fs_watcher_" <> dir.path)
-      // the supervisor started by the fs lib always return {ok}
-      let assert Ok(_) = fs_start_link(atom, dir.path)
-      fs_subscribe(atom)
-      let selector =
-        process.new_selector()
-        |> process.selecting_anything(watch_decoder(logger, dir, _))
+  process.spawn(fn() {
+    let atom = atom.create("fs_watcher_" <> dir.path)
+    // the supervisor started by the fs lib always return {ok}
+    let assert Ok(_) = fs_start_link(atom, dir.path)
+    fs_subscribe(atom)
+    let selector =
+      process.new_selector()
+      |> process.select_other(watch_decoder(logger, dir, _))
 
-      listen_directory_watcher(selector, subject)
-    },
-    True,
-  )
+    listen_directory_watcher(selector, subject)
+  })
 }
 
 fn listen_directory_watcher(
   selector: process.Selector(InternalMsg),
   subject: process.Subject(InternalMsg),
 ) {
-  let msg = process.select_forever(selector)
+  let msg = process.selector_receive_forever(selector)
   process.send(subject, msg)
   listen_directory_watcher(selector, subject)
 }
@@ -246,13 +243,13 @@ fn atom_to_watch_events() {
   // - Created / Deleted file are either empty or not used anymore, we can spare
   //   the build (would either error or produce nothing new)
   // - Other events don't need a rebuild?
-  let modified = atom.create_from_string("modified")
-  let renamed = atom.create_from_string("renamed")
+  let modified = atom.create("modified")
+  let renamed = atom.create("renamed")
 
   decode.new_primitive_decoder("Atom", fn(data) {
-    case atom.from_dynamic(data) {
-      Ok(ev) if ev == modified -> Ok(UpdatedFile)
-      Ok(ev) if ev == renamed -> Ok(UpdatedFile)
+    case atom.cast_from_dynamic(data) {
+      ev if ev == modified -> Ok(UpdatedFile)
+      ev if ev == renamed -> Ok(UpdatedFile)
       _ -> Ok(OtherEvents)
     }
   })

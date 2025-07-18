@@ -136,7 +136,7 @@ fn check_directory(path: String, ctor: fn(String) -> Directory) {
 fn get_gleam_toml_path() -> Result(String, String) {
   get_cwd()
   |> result.map_error(cwd_error_to_string)
-  |> result.then(get_root)
+  |> result.try(get_root)
 }
 
 fn get_root(path: String) -> Result(String, String) {

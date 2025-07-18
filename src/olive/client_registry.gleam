@@ -21,10 +21,10 @@ type Message {
 }
 
 pub fn start(logger: logging.Logger) {
-  let assert Ok(subject) =
-    actor.start(
-      set.new(),
-      fn(message: Message, state: Set(Subject(ClientMessage))) {
+  let assert Ok(actor) =
+    actor.new(set.new())
+    |> actor.on_message(
+      fn(state: Set(Subject(ClientMessage)), message: Message) {
         case message {
           ClientConnected(client) -> {
             logging.debug(logger, "Client connected")
@@ -47,6 +47,8 @@ pub fn start(logger: logging.Logger) {
         }
       },
     )
+    |> actor.start
+  let subject = actor.data
   ClientRegistry(subject)
 }
 

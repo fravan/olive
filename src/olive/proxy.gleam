@@ -6,12 +6,10 @@
 import gleam/bit_array
 import gleam/bytes_tree
 import gleam/erlang/process
-import gleam/function
 import gleam/http/request
 import gleam/http/response
 import gleam/httpc
 import gleam/option
-import gleam/otp/actor
 import gleam/result
 import gleam/string
 import mist
@@ -33,7 +31,7 @@ pub fn start_http(config: config.Config, clients: ClientRegistry) {
   |> mist.new
   |> mist.bind(config.bind)
   |> mist.port(config.proxy_port)
-  |> mist.start_http
+  |> mist.start
 }
 
 fn handle_websocket(
@@ -49,12 +47,12 @@ fn handle_websocket(
 
       let selector =
         process.new_selector()
-        |> process.selecting(client, function.identity)
+        |> process.select(client)
 
       #(client, option.Some(selector))
     },
     on_close: fn(client) { client_registry.remove(clients, client) },
-    handler: fn(client, conn, message) {
+    handler: fn(client, message, conn) {
       case message {
         mist.Custom(client_registry.Reload) -> {
           case mist.send_text_frame(conn, "reload") {
@@ -63,21 +61,21 @@ fn handle_websocket(
                 config.logger,
                 "Successfully sent reload message to client",
               )
-              actor.continue(client)
+              mist.continue(client)
             }
             Error(_) -> {
               logging.error(config.logger, "Could not send message to client")
-              actor.Stop(process.Normal)
+              mist.stop()
             }
           }
         }
         mist.Closed | mist.Shutdown -> {
           logging.warning(config.logger, "Client has disconnected unexpectedly")
           client_registry.remove(clients, client)
-          actor.Stop(process.Normal)
+          mist.stop()
         }
         mist.Text(_) | mist.Binary(_) -> {
-          actor.continue(client)
+          mist.continue(client)
         }
       }
     },

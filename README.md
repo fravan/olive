@@ -15,7 +15,7 @@
 Olive is a development tool to help working on a classic GLEAM server that renders HTML.
 Olive takes care of launching your server as well as a proxy to enable live reloading features.
 
-> ⚠️ Olive has some limitations, is in active development.
+> ⚠️ Olive has some limitations, and is no longer in active development.
 > Some feature might still be rough around the edges, be aware!
 
 Make sure to checkout the help for any configuration options with `gleam run -m olive -- --help`
@@ -49,7 +49,7 @@ pub fn main() {
     wisp_mist.handler(router.handle_request, "secret_key")
     |> mist.new
     |> mist.port(3000)
-    |> mist.start_http
+    |> mist.start
 
   process.sleep_forever()
 }
@@ -107,3 +107,7 @@ In case of strange bug, try to restart olive!
 
 This code reload cannot work on your main file because it is an init function that only runs once.
 In case you modify it, olive crashes to let you know you _have_ to restart it.
+
+## Proxy
+
+The proxy is dumb for now and does not handle Web sockets nor SSE connections. It waits for the server to end the connection before sending it to the client, so any long lived connection mechanism is broken. I don't know how to create a nicer proxy, and that's the **main** problem remaining on Olive… Everything else seems to work fine 👍

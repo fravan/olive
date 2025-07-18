@@ -37,13 +37,12 @@ fn run_olive(config: config.Config) {
   case watcher.start(config, subject) {
     Error(actor.InitTimeout) ->
       logging.error(config.logger, "Watcher took too much time to initialize")
-    Error(actor.InitCrashed(_)) ->
-      logging.error(config.logger, "Watcher crashed!")
-    Error(actor.InitFailed(process.Abnormal(msg))) ->
-      logging.error(config.logger, msg)
-    Error(actor.InitFailed(process.Killed)) ->
+    Error(actor.InitFailed(msg)) -> logging.error(config.logger, msg)
+    Error(actor.InitExited(process.Killed)) ->
       logging.error(config.logger, "Watcher was killed before initialisation")
-    Error(actor.InitFailed(process.Normal)) ->
+    Error(actor.InitExited(process.Abnormal(_))) ->
+      logging.error(config.logger, "Watcher shutdown abnormally")
+    Error(actor.InitExited(process.Normal)) ->
       logging.error(
         config.logger,
         "Watcher shutdown before end of initialisation",
