@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.0.0 - 2025-07-18
+- Updated Olive to use gleam_erlang and gleam_otp v1.
+
 ## v1.4.0 - 2025-03-03
 - Olive can now watch for `priv` directory, and any changes in them. It will trigger clients to reload __WITHOUT__ rebuilding your project.
 - Added `watch_debounce` option in CLI.
