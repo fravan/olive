@@ -30,8 +30,7 @@ fn fs_subscribe(name: Atom) -> Atom
 fn check_watcher_installed() -> Result(Nil, WatcherError)
 
 pub type Change {
-  SourceChange(file_name: String)
-  PrivChange(file_name: String)
+  Change(file_name: String, dir: config.Directory)
 }
 
 pub type Message {
@@ -118,10 +117,7 @@ fn do_loop(state: State, msg: InternalMsg) {
       // Watcher sends multiple events for a same save,
       // so we debounce it to avoid multiple builds in a very short time
       // we also avoid adding it again to the current debounced changes
-      let new_change = case dir {
-        config.SourceDirectory(_) -> SourceChange(file_name)
-        config.PrivDirectory(_) -> PrivChange(file_name)
-      }
+      let new_change = Change(file_name:, dir:)
       let current_changes = set.insert(state.current_changes, new_change)
       let timer =
         process.send_after(
@@ -187,7 +183,7 @@ fn watch_decoder(
     decode.success(#(file_name, events))
   }
   case decode.run(msg, decoder), dir {
-    Ok(#(file_name, events)), config.SourceDirectory(_) ->
+    Ok(#(file_name, events)), config.SourceDirectory(..) ->
       case filepath.extension(file_name), list.contains(events, UpdatedFile) {
         Ok("gleam"), True -> TriggerFilesChanged(file_name, dir)
         _, _ -> IgnoreChanges

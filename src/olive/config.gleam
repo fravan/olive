@@ -11,7 +11,7 @@ import simplifile
 import tom
 
 pub type Directory {
-  SourceDirectory(path: String)
+  SourceDirectory(path: String, uses_lustre_dev_tools: Bool)
   PrivDirectory(path: String)
 }
 
@@ -82,7 +82,7 @@ fn read_project_dependencies(toml: TomlFile, root: String) {
   // We want path dependencies only.
   // Path dependencies such as `common = { path = "../common" }` will be
   // watched at "../common/src" as well as the main src folder.
-  let source_directory = check_source_directory(root)
+  let source_directory = check_source_directory(root, False)
   let priv_directory = check_priv_directory(root)
 
   tom.get_table(toml, ["dependencies"])
@@ -98,9 +98,15 @@ fn read_project_dependencies(toml: TomlFile, root: String) {
               Error(_) -> acc
               Ok(tom.String(path)) -> {
                 let full_path = filepath.join(root, path)
-                let source_dir = check_source_directory(full_path)
-                let priv_dir = check_priv_directory(full_path)
-                [source_dir, priv_dir, ..acc]
+                let uses_lustre_dev_tools = uses_lustre_dev_tools(full_path)
+                [
+                  check_source_directory(full_path, uses_lustre_dev_tools),
+                  case uses_lustre_dev_tools {
+                    True -> option.None
+                    False -> check_priv_directory(full_path)
+                  },
+                  ..acc
+                ]
               }
               Ok(_) -> acc
             }
@@ -113,8 +119,27 @@ fn read_project_dependencies(toml: TomlFile, root: String) {
   })
 }
 
-fn check_source_directory(root: String) {
-  check_directory(filepath.join(root, "src"), SourceDirectory)
+fn uses_lustre_dev_tools(root: String) {
+  let result = {
+    use gleam_toml <- result.try(read_gleam_toml(root))
+
+    tom.get_table(gleam_toml, ["dev-dependencies"])
+    |> result.map_error(tom_field_error_to_string)
+    |> result.map(fn(dev_deps) {
+      dev_deps
+      |> dict.keys
+      |> list.contains("lustre_dev_tools")
+    })
+  }
+
+  result.unwrap(result, False)
+}
+
+fn check_source_directory(root: String, uses_lustre_dev_tools: Bool) {
+  check_directory(filepath.join(root, "src"), SourceDirectory(
+    path: _,
+    uses_lustre_dev_tools:,
+  ))
 }
 
 fn check_priv_directory(root: String) {
@@ -139,7 +164,7 @@ fn get_gleam_toml_path() -> Result(String, String) {
   |> result.try(get_root)
 }
 
-fn get_root(path: String) -> Result(String, String) {
+pub fn get_root(path: String) -> Result(String, String) {
   case simplifile.is_file(filepath.join(path, "gleam.toml")) {
     Ok(True) -> Ok(path)
     Ok(False) | Error(_) -> {
@@ -166,7 +191,7 @@ fn print_deps(deps: List(Directory)) {
     list.map(deps, fn(dir) {
       case dir {
         PrivDirectory(path) -> "Any changes in: " <> path
-        SourceDirectory(path) -> "Code changes in: " <> path
+        SourceDirectory(path, ..) -> "Code changes in: " <> path
       }
     }),
     "\n",
